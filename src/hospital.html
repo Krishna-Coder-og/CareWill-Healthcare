@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nearby Hospitals - MediBot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <meta name="google-signin-client_id" content="YOUR_CLIENT_ID.apps.googleusercontent.com">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: #000000;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Exact Header Styles from index.html */
+        .header {
+            background: #000000;
+            padding: 1.2rem 4rem;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid #4285f4;
+            border-bottom: 1px solid #4285f4;
+            box-shadow: 0 1px 8px rgba(66, 133, 244, 0.2),
+                       0 -1px 8px rgba(66, 133, 244, 0.2);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .header-logo i {
+            color: #4285f4;
+            font-size: 2.2rem;
+            text-shadow: 0 0 10px rgba(66, 133, 244, 0.5);
+            background: rgba(66, 133, 244, 0.1);
+            padding: 10px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .header-logo:hover i {
+            transform: rotate(360deg);
+            background: rgba(66, 133, 244, 0.2);
+        }
+
+        .header h1 {
+            color: #4285f4;
+            font-size: 1.8rem;
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(66, 133, 244, 0.3);
+            letter-spacing: -0.5px;
+        }
+
+        .header-tagline {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            margin-left: 20px;
+            font-weight: 400;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 40px;
+            margin: 0 auto;
+        }
+
+        .nav-item {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: color 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .nav-item:hover {
+            color: #4285f4;
+        }
+
+        .nav-item.active {
+            color: #4285f4;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Sign In button - light by default, dark on hover */
+        .signin-btn {
+            padding: 8px 28px;
+            background: rgba(66, 133, 244, 0.1);  /* Light blue transparent background */
+            color: #4285f4;                       /* Blue text */
+            border: 1px solid #4285f4;            /* Blue border */
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .signin-btn:hover {
+            background: #4285f4;  /* Solid blue on hover */
+            color: white;         /* White text on hover */
+        }
+
+        /* Sign Up button - solid blue by default, light on hover */
+        .signup-btn {
+            padding: 8px 28px;
+            background: #4285f4;    /* Solid blue background */
+            color: white;           /* White text */
+            border: 1px solid #4285f4;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .signup-btn:hover {
+            background: rgba(66, 133, 244, 0.1);  /* Light blue transparent on hover */
+            color: #4285f4;                       /* Blue text on hover */
+        }
+
+        .main-content {
+            margin-top: 100px;
+            padding: 20px;
+            flex-grow: 1;
+        }
+
+        .location-container {
+            max-width: 1200px;
+            margin: 0 auto 30px;
+            text-align: center;
+            padding: 20px;
+            background: rgba(66, 133, 244, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(66, 133, 244, 0.3);
+        }
+
+        .location-btn {
+            padding: 12px 30px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .location-btn:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+        }
+
+        .location-btn i {
+            font-size: 1.2rem;
+        }
+
+        .hospitals-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .hospital-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(66, 133, 244, 0.3);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .hospital-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(66, 133, 244, 0.2);
+            border-color: #4285f4;
+        }
+
+        .hospital-name {
+            color: #4285f4;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .hospital-info {
+            color: #e0e0e0;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .hospital-rating {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .star {
+            color: #ffd700;
+        }
+
+        .hospital-distance {
+            color: #4285f4;
+            font-size: 0.9rem;
+        }
+
+        .hospital-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .action-btn {
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .directions-btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+        }
+
+        .directions-btn:hover {
+            background: #3367d6;
+        }
+
+        .call-btn {
+            background: transparent;
+            color: #4285f4;
+            border: 1px solid #4285f4;
+        }
+
+        .call-btn:hover {
+            background: rgba(66, 133, 244, 0.1);
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px auto;
+            border-radius: 12px;
+            border: 1px solid #4285f4;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #4285f4;
+            display: none;
+        }
+
+        .loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 1rem;
+            }
+
+            .hospitals-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Footer Styles */
+        .footer {
+            background: #000000;
+            padding: 60px 0 20px 0;
+            margin-top: auto;
+            border-top: 1px solid #4285f4;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            padding: 0 20px;
+        }
+
+        .footer-section h3 {
+            color: #4285f4;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .footer-section p {
+            color: #e0e0e0;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .subscribe-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .subscribe-input {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(66, 133, 244, 0.3);
+            border-radius: 4px;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .subscribe-btn {
+            padding: 12px 24px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .social-icon {
+            color: #4285f4;
+            font-size: 1.8rem;
+            transition: all 0.5s ease;
+            display: inline-block;
+            padding: 10px;
+            border-radius: 50%;
+            background: rgba(66, 133, 244, 0.1);
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+        }
+
+        .social-icon:hover {
+            color: #ffffff;
+            transform: rotate(360deg);
+            border-color: #ffffff;
+            box-shadow: 0 0 15px rgba(66, 133, 244, 0.5);
+        }
+
+        .social-icon.instagram:hover {
+            background: linear-gradient(45deg, #405DE6, #5851DB, #833AB4, #C13584, #E1306C, #FD1D1D);
+        }
+
+        .social-icon.linkedin:hover {
+            background: #0077b5;
+        }
+
+        .social-icon.youtube:hover {
+            background: #FF0000;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 40px;
+        }
+
+        .links-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .links-column a {
+            color: #e0e0e0;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .links-column a:hover {
+            color: #4285f4;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 40px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+
+        .heart {
+            color: #4285f4;
+            display: inline-block;
+            animation: heartbeat 1.5s infinite;
+        }
+
+        @keyframes heartbeat {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .map-container {
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0;
+            border: 1px solid rgba(66, 133, 244, 0.3);
+        }
+
+        .map-container iframe {
+            width: 100%;
+            height: 200px;
+            border: 0;
+        }
+
+        .address {
+            color: #e0e0e0;
+            line-height: 1.6;
+            font-size: 0.9rem;
+        }
+
+        .email {
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+
+        .email a {
+            color: #4285f4;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .email a:hover {
+            color: #3367d6;
+            text-decoration: underline;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 40px;
+        }
+
+        .links-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .links-column a {
+            color: #e0e0e0;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .links-column a:hover {
+            color: #4285f4;
+            transform: translateX(5px);
+        }
+
+        @media (max-width: 768px) {
+            .footer-container {
+                grid-template-columns: 1fr;
+                gap: 40px;
+                padding: 0 20px;
+            }
+
+            .footer-links {
+                gap: 20px;
+            }
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .facility-type {
+            background: rgba(66, 133, 244, 0.1);
+            color: #4285f4;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .opening-hours {
+            margin: 15px 0;
+        }
+
+        .open-now {
+            color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .closed {
+            color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .hours-dropdown {
+            position: relative;
+            display: inline-block;
+            margin-left: 15px;
+        }
+
+        .hours-btn {
+            background: rgba(66, 133, 244, 0.1);
+            color: #4285f4;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .hours-content {
+            display: none;
+            position: absolute;
+            background: #242f3e;
+            min-width: 200px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid rgba(66, 133, 244, 0.3);
+        }
+
+        .hours-dropdown:hover .hours-content {
+            display: block;
+        }
+
+        .facility-photos {
+            margin: 15px 0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .facility-photos img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .facility-photos img:hover {
+            transform: scale(1.05);
+        }
+
+        .filter-container {
+            max-width: 1200px;
+            margin: 0 auto 20px;
+            display: flex;
+            gap: 15px;
+            padding: 20px;
+        }
+
+        .filter-btn {
+            padding: 8px 20px;
+            background: rgba(66, 133, 244, 0.1);
+            color: #4285f4;
+            border: 1px solid #4285f4;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active {
+            background: #4285f4;
+            color: white;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .analyzer-toggle-btn {
+            background: rgba(66, 133, 244, 0.1);
+            color: #4285f4;
+            border: 1px solid #4285f4;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .analyzer-toggle-btn:hover {
+            background: #4285f4;
+            color: white;
+        }
+
+        .symptom-analyzer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 600px;
+            background: rgba(17, 17, 17, 0.98);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(66, 133, 244, 0.3);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        .analyzer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(66, 133, 244, 0.3);
+        }
+
+        .analyzer-header h3 {
+            color: #4285f4;
+            font-size: 1.4rem;
+        }
+
+        .close-analyzer {
+            background: none;
+            border: none;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: color 0.3s ease;
+        }
+
+        .close-analyzer:hover {
+            color: #4285f4;
+        }
+
+        .analyzer-content {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #e0e0e0;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(66, 133, 244, 0.3);
+            border-radius: 8px;
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #4285f4;
+            background: rgba(66, 133, 244, 0.1);
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #e0e0e0;
+            cursor: pointer;
+        }
+
+        .analyze-btn {
+            width: 100%;
+            padding: 12px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .analyze-btn:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+        }
+
+        /* Overlay effect when analyzer is open */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+            display: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1001;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #111111;
+            padding: 40px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid #4285f4;
+            position: relative;
+            text-align: center;
+        }
+
+        .close-modal {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            color: #4285f4;
+            cursor: pointer;
+            font-size: 24px;
+        }
+
+        .auth-title {
+            color: #4285f4;
+            margin-bottom: 30px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .user-profile {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            background: rgba(66, 133, 244, 0.1);
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: 1px solid rgba(66, 133, 244, 0.2);
+        }
+
+        .user-profile img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+
+        .user-name {
+            color: #4285f4;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .logout-btn {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #status {
+            background: rgba(66, 133, 244, 0.1);
+            color: #4285f4;
+            text-align: center;
+            padding: 10px;
+            margin: 10px auto;
+            border-radius: 8px;
+            max-width: 1200px;
+            font-weight: 500;
+            border: 1px solid rgba(66, 133, 244, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <a href="/" class="header-logo">
+                <i class="fas fa-robot"></i>
+                <h1>MediBot</h1>
+            </a>
+            <span class="header-tagline">Your Medical Assistant</span>
+        </div>
+        <nav class="header-nav">
+            <a href="/HomePage" class="nav-item">Home</a>
+            <a href="/hospitals" class="nav-item active">Hospitals</a>
+            <a href="/doctors" class="nav-item">Doctors</a>
+            <a href="/about" class="nav-item">About</a>
+        </nav>
+        <div class="header-right">
+            <button class="signin-btn">Sign In</button>
+            <button class="signup-btn">Sign Up</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="location-container">
+            <button class="location-btn" onclick="findNearbyHospitals()">
+                <i class="fas fa-location-dot"></i>
+                Find Nearby Hospitals
+            </button>
+        </div>
+
+        <div id="status"></div>
+        <div id="map"></div>
+        <div class="hospitals-container" id="hospitals-list"></div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <!-- Subscribe Section -->
+            <div class="footer-section">
+                <h3>Subscribe to MediBot</h3>
+                <p>Receive Important Updates and Newsletter</p>
+                <div class="subscribe-form">
+                    <input type="email" placeholder="example@gmail.com" class="subscribe-input">
+                    <button class="subscribe-btn">Subscribe</button>
+                </div>
+                <div class="social-links">
+                    <a href="#" class="social-icon instagram">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="#" class="social-icon linkedin">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                    <a href="#" class="social-icon youtube">
+                        <i class="fab fa-youtube"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Contact Section -->
+            <div class="footer-section">
+                <h3>Contact Us</h3>
+                <p class="address">KIET Group of Institution, Ghaziabad, Delhi NCR, Uttar Pradesh, India, PIN 201206</p>
+                <div class="map-container">
+                    <iframe 
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3496.0133247560097!2d77.49668867459228!3d28.75282427561103!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390cf47204fb9241%3A0xb1e6df3c98e5a39f!2sKIET%20GROUP%20OF%20INSTITUTIONS!5e0!3m2!1sen!2sin!4v1709636418085!5m2!1sen!2sin"
+                        width="100%" 
+                        height="200" 
+                        style="border:0;" 
+                        allowfullscreen="" 
+                        loading="lazy"
+                        referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
+                </div>
+                <p class="email">Mail us at: <a href="mailto:medibot@kiet.edu">medibot@kiet.edu</a></p>
+            </div>
+
+            <!-- Important Links -->
+            <div class="footer-section">
+                <h3>Important Links</h3>
+                <div class="footer-links">
+                    <div class="links-column">
+                        
+                        
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Terms and Conditions</a>
+                        <a href="#">Contact Us</a>
+                    </div>
+                    <div class="links-column">
+                        
+                        <a href="#">Idea Submission</a>
+                        <a href="#">Our Team</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>Made with <span class="heart">❤</span> MediBot 2024</p>
+        </div>
+    </footer>
+
+    <!-- Sign In Modal -->
+    <div id="signInModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('signInModal')">&times;</span>
+            <h2 class="auth-title">Sign In to MediBot</h2>
+            <div id="signInButton"></div>
+        </div>
+    </div>
+
+    <!-- Sign Up Modal -->
+    <div id="signUpModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('signUpModal')">&times;</span>
+            <h2 class="auth-title">Sign Up for MediBot</h2>
+            <div id="signUpButton"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let markers = [];
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([28.6139, 77.2090], 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        function findNearbyHospitals() {
+            updateStatus('Getting your location...');
+            
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            };
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    // Success callback
+                    position => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        
+                        // Clear existing markers and list
+                        markers.forEach(marker => map.removeLayer(marker));
+                        markers = [];
+                        document.getElementById('hospitals-list').innerHTML = '';
+                        
+                        // Add user location marker
+                        const userMarker = L.marker([lat, lon], {
+                            icon: L.divIcon({
+                                html: '<i class="fas fa-user-circle" style="color: #4285f4; font-size: 24px;"></i>',
+                                className: 'user-location',
+                                iconSize: [24, 24]
+                            })
+                        }).addTo(map);
+                        markers.push(userMarker);
+                        userMarker.bindPopup('Your Location').openPopup();
+                        
+                        // Center map on user location
+                        map.setView([lat, lon], 13);
+                        
+                        // Search for healthcare facilities
+                        searchHealthcareFacilities(lat, lon);
+                    },
+                    // Error callback
+                    error => {
+                        console.error('Geolocation error:', error);
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                updateStatus('Please allow location access to find nearby hospitals.');
+                                // Use default location as fallback
+                                searchHealthcareFacilities(28.6139, 77.2090); // Default to Delhi coordinates
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                updateStatus('Location information is unavailable. Showing default area.');
+                                searchHealthcareFacilities(28.6139, 77.2090);
+                                break;
+                            case error.TIMEOUT:
+                                updateStatus('Location request timed out. Showing default area.');
+                                searchHealthcareFacilities(28.6139, 77.2090);
+                                break;
+                            default:
+                                updateStatus('An unknown error occurred. Showing default area.');
+                                searchHealthcareFacilities(28.6139, 77.2090);
+                        }
+                    },
+                    options
+                );
+            } else {
+                updateStatus('Geolocation is not supported by your browser. Showing default area.');
+                searchHealthcareFacilities(28.6139, 77.2090);
+            }
+        }
+
+        function searchHealthcareFacilities(lat, lon) {
+            updateStatus('Searching for healthcare facilities...');
+            
+            // Increased search radius (approximately 5km)
+            const radius = 0.05;
+            const bbox = `${lon - radius},${lat - radius},${lon + radius},${lat + radius}`;
+            
+            // Search for multiple healthcare facility types
+            const searchQueries = [
+                'hospital',
+                'clinic',
+                'medical_center',
+                'doctors',
+                'healthcare'
+            ];
+
+            // Add a marker for the center point (user location or default)
+            const centerMarker = L.marker([lat, lon], {
+                icon: L.divIcon({
+                    html: '<i class="fas fa-user-circle" style="color: #4285f4; font-size: 24px;"></i>',
+                    className: 'user-location',
+                    iconSize: [24, 24]
+                })
+            }).addTo(map);
+            markers.push(centerMarker);
+            centerMarker.bindPopup('Search Location').openPopup();
+
+            // Center map on the location
+            map.setView([lat, lon], 13);
+
+            Promise.all(searchQueries.map(query => 
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&viewbox=${bbox}&bounded=1`)
+                    .then(response => response.json())
+                    .catch(error => {
+                        console.error('Search error:', error);
+                        return [];
+                    })
+            ))
+            .then(results => {
+                // Combine and deduplicate results
+                const facilities = new Map();
+                results.flat().forEach(place => {
+                    if (!facilities.has(place.place_id)) {
+                        facilities.set(place.place_id, place);
+                    }
+                });
+
+                const uniqueFacilities = Array.from(facilities.values());
+
+                if (uniqueFacilities.length === 0) {
+                    updateStatus('Searching in a wider area...');
+                    // Try with a larger radius
+                    const newRadius = radius * 2;
+                    const newBbox = `${lon - newRadius},${lat - newRadius},${lon + newRadius},${lat + newRadius}`;
+                    
+                    // Retry search with larger radius
+                    Promise.all(searchQueries.map(query => 
+                        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&viewbox=${newBbox}&bounded=1`)
+                            .then(response => response.json())
+                            .catch(error => {
+                                console.error('Search error:', error);
+                                return [];
+                            })
+                    ))
+                    .then(newResults => {
+                        handleSearchResults(newResults, lat, lon);
+                    });
+                } else {
+                    handleSearchResults([uniqueFacilities], lat, lon);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                updateStatus('Error finding healthcare facilities. Please try again.');
+            });
+        }
+
+        // Add this new helper function
+        function handleSearchResults(results, lat, lon) {
+            const facilities = new Map();
+            results.flat().forEach(place => {
+                if (!facilities.has(place.place_id)) {
+                    facilities.set(place.place_id, place);
+                }
+            });
+
+            const uniqueFacilities = Array.from(facilities.values());
+
+            if (uniqueFacilities.length === 0) {
+                updateStatus('No healthcare facilities found nearby. Try a different location.');
+                return;
+            }
+
+            updateStatus(`Found ${uniqueFacilities.length} healthcare facilities nearby`);
+
+            uniqueFacilities.forEach(place => {
+                // Calculate distance from search location
+                const distance = calculateDistance(lat, lon, place.lat, place.lon);
+                
+                // Add marker
+                const marker = L.marker([place.lat, place.lon], {
+                    icon: L.divIcon({
+                        html: '<i class="fas fa-hospital" style="color: #4285f4; font-size: 20px;"></i>',
+                        className: 'hospital-marker',
+                        iconSize: [20, 20]
+                    })
+                }).addTo(map);
+                
+                const popupContent = `
+                    <b>${place.display_name.split(',')[0]}</b><br>
+                    Distance: ${distance.toFixed(1)} km
+                `;
+                
+                marker.bindPopup(popupContent);
+                markers.push(marker);
+
+                // Add facility card
+                addFacilityCard({
+                    name: place.display_name.split(',')[0],
+                    address: place.display_name,
+                    distance: distance.toFixed(1),
+                    lat: place.lat,
+                    lon: place.lon
+                });
+            });
+
+            // Adjust map bounds to show all markers
+            const group = new L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function addFacilityCard(facility) {
+            const hospitalsList = document.getElementById('hospitals-list');
+            const card = document.createElement('div');
+            card.className = 'hospital-card';
+            
+            card.innerHTML = `
+                <h3 class="hospital-name">${facility.name}</h3>
+                <div class="hospital-info">
+                    <p><i class="fas fa-map-marker-alt"></i> ${facility.address}</p>
+                    <p><i class="fas fa-route"></i> ${facility.distance} km away</p>
+                </div>
+                <div class="hospital-actions">
+                    <button class="action-btn directions-btn" onclick="openDirections(${facility.lat}, ${facility.lon})">
+                        <i class="fas fa-directions"></i> Directions
+                    </button>
+                </div>
+            `;
+            
+            hospitalsList.appendChild(card);
+        }
+
+        function openDirections(lat, lon) {
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank');
+        }
+
+        // Initialize Google Sign-In
+        function initializeGoogleSignIn() {
+            google.accounts.id.initialize({
+                client_id: 'YOUR_CLIENT_ID.apps.googleusercontent.com',
+                callback: handleCredentialResponse
+            });
+
+            // Render Sign In button
+            google.accounts.id.renderButton(
+                document.getElementById("signInButton"),
+                { 
+                    theme: "outline",
+                    size: "large",
+                    type: "standard",
+                    text: "signin_with",
+                    shape: "rectangular",
+                    logo_alignment: "left",
+                    width: 250
+                }
+            );
+
+            // Render Sign Up button
+            google.accounts.id.renderButton(
+                document.getElementById("signUpButton"),
+                { 
+                    theme: "outline",
+                    size: "large",
+                    type: "standard",
+                    text: "signup_with",
+                    shape: "rectangular",
+                    logo_alignment: "left",
+                    width: 250
+                }
+            );
+        }
+
+        // Handle the credential response
+        function handleCredentialResponse(response) {
+            const credential = response.credential;
+            const payload = decodeJwtResponse(credential);
+
+            // Save user info
+            localStorage.setItem('userInfo', JSON.stringify({
+                name: payload.name,
+                email: payload.email,
+                picture: payload.picture
+            }));
+
+            // Update UI
+            updateUIAfterSignIn(payload);
+            
+            // Close modals
+            closeModal('signInModal');
+            closeModal('signUpModal');
+        }
+
+        // Decode JWT token
+        function decodeJwtResponse(token) {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        }
+
+        // Update UI after sign in
+        function updateUIAfterSignIn(user) {
+            document.getElementById('authButtons').style.display = 'none';
+            document.getElementById('userProfile').style.display = 'flex';
+            document.getElementById('userPhoto').src = user.picture;
+            document.getElementById('userName').textContent = user.name;
+        }
+
+        // Handle Sign Out
+        function handleSignOut() {
+            google.accounts.id.disableAutoSelect();
+            localStorage.removeItem('userInfo');
+            document.getElementById('authButtons').style.display = 'flex';
+            document.getElementById('userProfile').style.display = 'none';
+            location.reload();
+        }
+
+        // Modal functions
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Check if user is already signed in on page load
+        window.onload = function() {
+            initializeGoogleSignIn();
+            const userInfo = localStorage.getItem('userInfo');
+            if (userInfo) {
+                updateUIAfterSignIn(JSON.parse(userInfo));
+            }
+            initMap(); // Keep your existing map initialization
+        }
+    </script>
+</body>
+</html>
